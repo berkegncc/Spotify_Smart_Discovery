@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spotify Akıllı Keşif Rotası</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        spotify: '#1DB954',
+                        spotifyHover: '#1ed760',
+                        darkBg: '#121212',
+                        cardBg: '#181818',
+                        lightGrey: '#B3B3B3',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #121212;
+            color: white;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        /* Range Slider Özelleştirmeleri (Neon Yeşil Vurgu) */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+            margin-top: 8px;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #1DB954;
+            cursor: pointer;
+            margin-top: -6px;
+            box-shadow: 0 0 10px rgba(29, 185, 84, 0.5);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #535353;
+            border-radius: 2px;
+        }
+
+        /* Spinner Animasyonu */
+        .loader {
+            border: 4px solid #333;
+            border-top: 4px solid #1DB954;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <!-- Ana Konteyner -->
+    <div class="relative bg-cardBg w-full max-w-md rounded-xl shadow-2xl p-6 border border-gray-800">
+        
+        <!-- Dil Değiştirici (Language Toggle) -->
+        <div class="absolute top-4 right-4 flex gap-2 z-50">
+            <button id="btn-tr" class="text-xs font-bold px-2 py-1 rounded bg-spotify text-black opacity-100 transition-all border border-spotify pointer-events-none">TR</button>
+            <button id="btn-en" class="text-xs font-bold px-2 py-1 rounded bg-transparent text-lightGrey opacity-60 hover:opacity-100 transition-all border border-gray-700 cursor-pointer">EN</button>
+        </div>
+        
+        <!-- Başlık -->
+        <div class="text-center mb-6">
+            <h1 class="text-3xl font-bold text-spotify flex justify-center items-center gap-2">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 0C5.4 0 0 5.4 0 12C0 18.6 5.4 24 12 24C18.6 24 24 18.6 24 12C24 5.4 18.6 0 12 0ZM17.6 17.3C17.4 17.7 16.9 17.8 16.5 17.6C13.7 15.9 10.2 15.5 6 16.5C5.5 16.6 5.1 16.3 5 15.8C4.9 15.3 5.2 14.9 5.7 14.8C10.3 13.8 14.2 14.2 17.3 16.1C17.7 16.3 17.8 16.9 17.6 17.3ZM19.1 14C18.8 14.5 18.2 14.6 17.7 14.3C14.5 12.3 9.6 11.8 5.8 12.9C5.2 13.1 4.6 12.8 4.4 12.2C4.2 11.6 4.5 11 5.1 10.8C9.5 9.5 15.1 10.1 18.8 12.4C19.3 12.7 19.4 13.4 19.1 14ZM19.3 10.6C15.4 8.2 8.9 8 5.2 9.1C4.5 9.3 3.7 8.9 3.5 8.2C3.3 7.5 3.7 6.7 4.4 6.5C8.7 5.2 16 5.5 20.4 8.2C21.1 8.6 21.3 9.5 20.9 10.1C20.5 10.8 19.7 11 19.3 10.6Z"/>
+                </svg>
+                <span id="txt-title">Akıllı Keşif</span>
+            </h1>
+            <p id="txt-subtitle" class="text-lightGrey text-sm mt-1">İstediğin tarzdaki müzikleri zevkine göre harmanla.</p>
+        </div>
+
+        <!-- Arama Modu (Radio Buttons) -->
+        <h2 id="txt-mode-title" class="text-white text-sm font-bold mb-2">Arama Modunu Seçin:</h2>
+        <div class="flex flex-col gap-3 mb-6 bg-gray-900 p-3 rounded-lg border border-gray-700">
+            
+            <label class="flex items-center text-sm text-lightGrey cursor-pointer">
+                <input type="radio" name="searchMode" value="playlist_pool" checked class="w-4 h-4 text-spotify bg-gray-800 border-gray-700 focus:ring-spotify focus:ring-2">
+                <span class="ml-2 w-full hover:text-white transition-colors">
+                    <strong id="txt-mode-pool-title" class="text-white">Geniş Keşif (Tavsiye Edilen):</strong> <span id="txt-mode-pool-desc">"oyun oynarken", "türkçe rap" gibi konular yazın. Tüm Spotify kullanıcı listelerindeki ortak güzel parçaları çıkarır.</span>
+                </span>
+            </label>
+
+            <label class="flex items-center text-sm text-lightGrey cursor-pointer">
+                <input type="radio" name="searchMode" value="genre" class="w-4 h-4 text-spotify bg-gray-800 border-gray-700 focus:ring-spotify focus:ring-2">
+                <span class="ml-2 w-full hover:text-white transition-colors">
+                    <strong id="txt-mode-genre-title" class="text-gray-300">Resmi Müzik Türü:</strong> <span id="txt-mode-genre-desc">Sadece İngilizce orijinal tür adları (örn: rock, edm)</span>
+                </span>
+            </label>
+            
+            <label class="flex items-center text-sm text-lightGrey cursor-pointer">
+                <input type="radio" name="searchMode" value="artist" class="w-4 h-4 text-spotify bg-gray-800 border-gray-700 focus:ring-spotify focus:ring-2">
+                <span class="ml-2 w-full hover:text-white transition-colors">
+                    <strong id="txt-mode-artist-title" class="text-gray-300">Sanatçıya Göre:</strong> <span id="txt-mode-artist-desc">Belirli sanatçıları virgülle yazın.</span>
+                </span>
+            </label>
+        </div>
+
+        <form id="playlistForm" class="space-y-5">
+            <!-- Genel Girdi -->
+            <div>
+                <label id="txt-label-input" class="block text-sm font-medium text-lightGrey mb-1">Cümle, Müzik Türü veya Sanatçı Adı Yazın</label>
+                <input type="text" id="targetInput" placeholder="Örn: araba sürerken, türkçe rap, sagopa..." required
+                    class="w-full bg-[#282828] text-white border border-transparent focus:border-spotify focus:ring-0 rounded-md px-4 py-2 mt-1 outline-none transition-all placeholder-gray-500">
+            </div>
+
+            <!-- Global Opsiyon: Dinlediklerimi Geç -->
+            <div class="flex items-center pt-2">
+                <input id="avoidDuplicates" type="checkbox"
+                    class="w-5 h-5 accent-spotify bg-gray-800 border-gray-700 rounded cursor-pointer">
+                <label for="avoidDuplicates" id="txt-label-duplicate" class="ml-2 block text-sm text-gray-300 cursor-pointer select-none">
+                    Daha Önce Dinlediklerimi Geç (Anti-Duplication)
+                </label>
+            </div>
+
+            <!-- Global Opsiyon: AI Filtresi -->
+            <div class="flex items-center pt-1">
+                <input id="avoidAI" type="checkbox"
+                    class="w-5 h-5 accent-spotify bg-gray-800 border-gray-700 rounded cursor-pointer">
+                <label for="avoidAI" id="txt-label-ai" class="ml-2 block text-sm text-gray-300 cursor-pointer select-none">
+                    Yapay Zeka (AI) Üretimi Olanları Geç (Tahmini Filtre)
+                </label>
+            </div>
+
+            <!-- Submit Butonu -->
+            <button type="submit" id="submitBtn" class="w-full bg-spotify hover:bg-spotifyHover text-black font-bold py-3 px-4 rounded-full transition-transform active:scale-95 flex items-center justify-center gap-2 mt-4">
+                <span id="txt-btn-generate">Çalma Listesi Oluştur</span>
+            </button>
+        </form>
+
+        <!-- Loading Durumu -->
+        <div id="loading" class="hidden mt-6 flex flex-col items-center justify-center">
+            <div class="loader mb-3"></div>
+            <p id="txt-loading" class="text-lightGrey text-sm animate-pulse">Şarkılar aranıyor ve filtreleniyor, lütfen bekleyin...</p>
+        </div>
+
+        <!-- Sonuç Ekranı -->
+        <div id="result" class="hidden mt-6 text-center bg-[#282828] p-4 rounded-lg border border-[#333]">
+            <p id="txt-res-success" class="text-white font-medium mb-1">🎉 Başarılı!</p>
+            <p id="result-text" class="text-lightGrey text-sm mb-3">Yeni çalma listen hazır.</p>
+            <a id="playlist-link" href="#" target="_blank"
+                class="inline-block border border-spotify text-white px-5 py-2 rounded-full text-sm font-bold hover:bg-spotify hover:text-black transition-colors">
+                <span id="txt-btn-open">Spotify'da Aç</span>
+            </a>
+        </div>
+        
+        <!-- Hata Ekranı -->
+        <div id="error" class="hidden mt-4 text-center p-3 rounded-lg bg-red-900 border border-red-500 text-red-200 text-sm">
+            Bir hata oluştu.
+        </div>
+
+    </div>
+
+    <!-- Uygulama Mantığı -->
+    <script>
+        const translations = {
+            tr: {
+                title: 'Akıllı Keşif',
+                subtitle: 'İstediğin tarzdaki müzikleri zevkine göre harmanla.',
+                modeTitle: 'Arama Modunu Seçin:',
+                modePoolTitle: 'Geniş Keşif (Tavsiye Edilen):',
+                modePoolDesc: '"oyun oynarken", "türkçe rap" gibi konular yazın. Tüm Spotify kullanıcı listelerindeki ortak güzel parçaları çıkarır.',
+                modeGenreTitle: 'Resmi Müzik Türü:',
+                modeGenreDesc: 'Sadece İngilizce orijinal tür adları (örn: rock, edm)',
+                modeArtistTitle: 'Sanatçıya Göre:',
+                modeArtistDesc: 'Belirli sanatçıları virgülle yazın.',
+                labelInput: 'Cümle, Müzik Türü veya Sanatçı Adı Yazın',
+                placeholderInput: 'Örn: araba sürerken, türkçe rap, sagopa...',
+                labelDuplicate: 'Daha Önce Dinlediklerimi Geç (Anti-Duplication)',
+                labelAI: 'Yapay Zeka (AI) Üretimi Olanları Geç (Tahmini Filtre)',
+                btnGenerate: 'Çalma Listesi Oluştur',
+                loading: 'Şarkılar aranıyor ve filtreleniyor, lütfen bekleyin...',
+                resSuccess: '🎉 Başarılı!',
+                resText: (count, name) => `${count} şarkıdan oluşan "${name}" isimli listeniz başarıyla Spotify'a eklendi.`,
+                btnOpen: 'Spotify\'da Aç',
+                errorUnknown: 'Bilinmeyen bir hata oluştu'
+            },
+            en: {
+                title: 'Smart Discovery',
+                subtitle: 'Blend your favorite music styles exactly as you like.',
+                modeTitle: 'Choose Search Mode:',
+                modePoolTitle: 'Deep Discovery (Recommended):',
+                modePoolDesc: 'Type topics like "night drive", "lo-fi study", "phonk gym". Finds best tracks from user-created playlists.',
+                modeGenreTitle: 'Official Genre:',
+                modeGenreDesc: 'Standard Spotify genre tags (e.g., rock, edm, pop)',
+                modeArtistTitle: 'By Artist:',
+                modeArtistDesc: 'Type specific artist names separated by commas.',
+                labelInput: 'Type Phrase, Genre, or Artist Name',
+                placeholderInput: 'e.g., synthwave, night drive, arctic monkeys...',
+                labelDuplicate: 'Avoid Previously Heard Tracks (Anti-Duplication)',
+                labelAI: 'Filter AI Generated Tracks (Estimated Filter)',
+                btnGenerate: 'Generate Playlist',
+                loading: 'Searching and filtering tracks, please wait...',
+                resSuccess: '🎉 Success!',
+                resText: (count, name) => `Your playlist "${name}" with ${count} tracks has been added to Spotify.`,
+                btnOpen: 'Open in Spotify',
+                errorUnknown: 'An unknown error occurred'
+            }
+        };
+
+        let currentLang = localStorage.getItem('lang') || 'tr';
+
+        function updateUI() {
+            console.log("Updating UI to:", currentLang);
+            const lang = translations[currentLang];
+            if (!lang) return;
+
+            document.documentElement.lang = currentLang;
+            
+            const elements = {
+                'txt-title': lang.title,
+                'txt-subtitle': lang.subtitle,
+                'txt-mode-title': lang.modeTitle,
+                'txt-mode-pool-title': lang.modePoolTitle,
+                'txt-mode-pool-desc': lang.modePoolDesc,
+                'txt-mode-genre-title': lang.modeGenreTitle,
+                'txt-mode-genre-desc': lang.modeGenreDesc,
+                'txt-mode-artist-title': lang.modeArtistTitle,
+                'txt-mode-artist-desc': lang.modeArtistDesc,
+                'txt-label-input': lang.labelInput,
+                'txt-label-duplicate': lang.labelDuplicate,
+                'txt-label-ai': lang.labelAI,
+                'txt-btn-generate': lang.btnGenerate,
+                'txt-loading': lang.loading,
+                'txt-res-success': lang.resSuccess,
+                'txt-btn-open': lang.btnOpen
+            };
+
+            for (const [id, text] of Object.entries(elements)) {
+                const el = document.getElementById(id);
+                if (el) el.innerText = text;
+            }
+
+            const targetInput = document.getElementById('targetInput');
+            if (targetInput) targetInput.placeholder = lang.placeholderInput;
+
+            // Update toggle styles
+            const btnTr = document.getElementById('btn-tr');
+            const btnEn = document.getElementById('btn-en');
+            
+            if (btnTr && btnEn) {
+                if (currentLang === 'tr') {
+                    btnTr.className = "text-xs font-bold px-2 py-1 rounded bg-spotify text-black opacity-100 transition-all border border-spotify pointer-events-none";
+                    btnEn.className = "text-xs font-bold px-2 py-1 rounded bg-transparent text-lightGrey opacity-60 hover:opacity-100 transition-all border border-gray-700 cursor-pointer";
+                } else {
+                    btnEn.className = "text-xs font-bold px-2 py-1 rounded bg-spotify text-black opacity-100 transition-all border border-spotify pointer-events-none";
+                    btnTr.className = "text-xs font-bold px-2 py-1 rounded bg-transparent text-lightGrey opacity-60 hover:opacity-100 transition-all border border-gray-700 cursor-pointer";
+                }
+            }
+        }
+
+        function changeLang(lang) {
+            console.log("Language changing to:", lang);
+            currentLang = lang;
+            localStorage.setItem('lang', lang);
+            updateUI();
+        }
+
+        // Attach event listeners for buttons
+        document.getElementById('btn-tr').addEventListener('click', () => changeLang('tr'));
+        document.getElementById('btn-en').addEventListener('click', () => changeLang('en'));
+
+        // Initialize UI
+        updateUI();
+
+        // Form Submit İslemi
+        document.getElementById('playlistForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const lang = translations[currentLang];
+            
+            // UI Yönetimi
+            const submitBtn = document.getElementById('submitBtn');
+            const loading = document.getElementById('loading');
+            const result = document.getElementById('result');
+            const errorEl = document.getElementById('error');
+            
+            submitBtn.style.display = 'none';
+            loading.classList.remove('hidden');
+            result.classList.add('hidden');
+            errorEl.classList.add('hidden');
+
+            // Form Verilerini Topla
+            const searchMode = document.querySelector('input[name="searchMode"]:checked').value;
+            const targetInput = document.getElementById('targetInput').value.trim();
+            const avoidDuplicates = document.getElementById('avoidDuplicates').checked;
+            const avoidAI = document.getElementById('avoidAI').checked;
+
+            const payload = {
+                searchMode: searchMode,
+                targetInput: targetInput,
+                avoidDuplicates: avoidDuplicates,
+                avoidAI: avoidAI,
+                lang: currentLang
+            };
+
+            // Backend'e istek at
+            try {
+                const response = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || lang.errorUnknown);
+                }
+
+                // Başarılı ise sonucu göster
+                loading.classList.add('hidden');
+                result.classList.remove('hidden');
+                document.getElementById('result-text').innerText = lang.resText(data.count, data.name);
+                document.getElementById('playlist-link').href = data.url;
+                submitBtn.style.display = 'flex';
+
+            } catch (err) {
+                loading.classList.add('hidden');
+                errorEl.classList.remove('hidden');
+                errorEl.innerText = err.message;
+                submitBtn.style.display = 'flex';
+            }
+        });
+    </script>
+</body>
+</html>
