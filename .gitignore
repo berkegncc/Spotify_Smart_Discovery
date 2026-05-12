@@ -1,14 +1,34 @@
+# Dependencies
 node_modules/
+
+# Environment variables — never commit real credentials
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.DS_Store
-scratch/
 *.log
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+desktop.ini
 .vscode/
 .idea/
+*.swp
+*.swo
+
+# Claude Code local data (worktrees, hooks, local settings) — must never be published
+.claude/
+
+# Local-only config overrides
+*.local.json
+
+# Scratch / playground
+scratch/
+tmp/

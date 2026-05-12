@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Spotify Akıllı Keşif Rotası</title>
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" type="image/svg+xml" href="/icon.svg">
+    <meta name="theme-color" content="#1DB954">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -65,19 +68,29 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        /* Track listesi scroll area */
+        #track-list::-webkit-scrollbar { width: 6px; }
+        #track-list::-webkit-scrollbar-track { background: #1a1a1a; border-radius: 3px; }
+        #track-list::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
+        #track-list::-webkit-scrollbar-thumb:hover { background: #1DB954; }
+
+        #progress-log::-webkit-scrollbar { width: 4px; }
+        #progress-log::-webkit-scrollbar-track { background: transparent; }
+        #progress-log::-webkit-scrollbar-thumb { background: #444; border-radius: 2px; }
     </style>
 </head>
 <body class="min-h-screen flex items-center justify-center p-4">
 
     <!-- Ana Konteyner -->
     <div class="relative bg-cardBg w-full max-w-md rounded-xl shadow-2xl p-6 border border-gray-800">
-        
+
         <!-- Dil Değiştirici (Language Toggle) -->
         <div class="absolute top-4 right-4 flex gap-2 z-50">
             <button id="btn-tr" class="text-xs font-bold px-2 py-1 rounded bg-spotify text-black opacity-100 transition-all border border-spotify pointer-events-none">TR</button>
             <button id="btn-en" class="text-xs font-bold px-2 py-1 rounded bg-transparent text-lightGrey opacity-60 hover:opacity-100 transition-all border border-gray-700 cursor-pointer">EN</button>
         </div>
-        
+
         <!-- Başlık -->
         <div class="text-center mb-6">
             <h1 class="text-3xl font-bold text-spotify flex justify-center items-center gap-2">
@@ -89,83 +102,246 @@
             <p id="txt-subtitle" class="text-lightGrey text-sm mt-1">İstediğin tarzdaki müzikleri zevkine göre harmanla.</p>
         </div>
 
-        <!-- Arama Modu (Radio Buttons) -->
-        <h2 id="txt-mode-title" class="text-white text-sm font-bold mb-2">Arama Modunu Seçin:</h2>
-        <div class="flex flex-col gap-3 mb-6 bg-gray-900 p-3 rounded-lg border border-gray-700">
-            
-            <label class="flex items-center text-sm text-lightGrey cursor-pointer">
-                <input type="radio" name="searchMode" value="playlist_pool" checked class="w-4 h-4 text-spotify bg-gray-800 border-gray-700 focus:ring-spotify focus:ring-2">
-                <span class="ml-2 w-full hover:text-white transition-colors">
-                    <strong id="txt-mode-pool-title" class="text-white">Geniş Keşif (Tavsiye Edilen):</strong> <span id="txt-mode-pool-desc">"oyun oynarken", "türkçe rap" gibi konular yazın. Tüm Spotify kullanıcı listelerindeki ortak güzel parçaları çıkarır.</span>
-                </span>
-            </label>
+        <!-- Form View -->
+        <div id="view-form">
+            <!-- Quick Picks: history (auto) + saved presets (manual) -->
+            <details id="quickPicks" class="bg-gray-900 border border-gray-700 rounded-lg p-3 mb-4 hidden">
+                <summary id="txt-quickpicks-title" class="text-sm font-bold text-spotify cursor-pointer select-none">Hızlı Erişim</summary>
+                <div class="mt-3 space-y-3">
+                    <div>
+                        <p id="txt-history-title" class="text-xs text-lightGrey mb-1">Son Aramalar</p>
+                        <div id="historyList" class="space-y-1"></div>
+                    </div>
+                    <div>
+                        <p id="txt-presets-title" class="text-xs text-lightGrey mb-1">Kayıtlı Preset'lerim</p>
+                        <div id="presetsList" class="space-y-1"></div>
+                    </div>
+                </div>
+            </details>
 
-            <label class="flex items-center text-sm text-lightGrey cursor-pointer">
-                <input type="radio" name="searchMode" value="genre" class="w-4 h-4 text-spotify bg-gray-800 border-gray-700 focus:ring-spotify focus:ring-2">
-                <span class="ml-2 w-full hover:text-white transition-colors">
-                    <strong id="txt-mode-genre-title" class="text-gray-300">Resmi Müzik Türü:</strong> <span id="txt-mode-genre-desc">Sadece İngilizce orijinal tür adları (örn: rock, edm)</span>
-                </span>
-            </label>
-            
-            <label class="flex items-center text-sm text-lightGrey cursor-pointer">
-                <input type="radio" name="searchMode" value="artist" class="w-4 h-4 text-spotify bg-gray-800 border-gray-700 focus:ring-spotify focus:ring-2">
-                <span class="ml-2 w-full hover:text-white transition-colors">
-                    <strong id="txt-mode-artist-title" class="text-gray-300">Sanatçıya Göre:</strong> <span id="txt-mode-artist-desc">Belirli sanatçıları virgülle yazın.</span>
-                </span>
-            </label>
-        </div>
-
-        <form id="playlistForm" class="space-y-5">
-            <!-- Genel Girdi -->
-            <div>
-                <label id="txt-label-input" class="block text-sm font-medium text-lightGrey mb-1">Cümle, Müzik Türü veya Sanatçı Adı Yazın</label>
-                <input type="text" id="targetInput" placeholder="Örn: araba sürerken, türkçe rap, sagopa..." required
-                    class="w-full bg-[#282828] text-white border border-transparent focus:border-spotify focus:ring-0 rounded-md px-4 py-2 mt-1 outline-none transition-all placeholder-gray-500">
+            <!-- Vibe Preset Dropdown -->
+            <div class="mb-4">
+                <label class="block text-sm font-bold text-spotify mb-2" id="txt-vibe-title">Hazır Vibe (veya kendi temanı yaz)</label>
+                <select id="vibePreset" class="w-full bg-gray-900 text-white border border-gray-700 focus:border-spotify rounded-md px-4 py-2 outline-none transition-colors">
+                    <option value="" id="txt-vibe-custom" selected>Kişisel arama</option>
+                    <option value="morning_coffee">Sabah Kahvesi</option>
+                    <option value="night_drive">Gece Sürüşü</option>
+                    <option value="workout">Antrenman</option>
+                    <option value="study">Çalışma</option>
+                    <option value="party">Parti</option>
+                    <option value="rainy_day">Yağmurlu Gün</option>
+                    <option value="romantic">Romantik</option>
+                    <option value="focus">Odaklanma</option>
+                    <option value="relax">Rahatlama</option>
+                </select>
             </div>
 
-            <!-- Global Opsiyon: Dinlediklerimi Geç -->
-            <div class="flex items-center pt-2">
-                <input id="avoidDuplicates" type="checkbox"
-                    class="w-5 h-5 accent-spotify bg-gray-800 border-gray-700 rounded cursor-pointer">
-                <label for="avoidDuplicates" id="txt-label-duplicate" class="ml-2 block text-sm text-gray-300 cursor-pointer select-none">
-                    Daha Önce Dinlediklerimi Geç (Anti-Duplication)
+            <!-- Arama Modu (Radio Buttons) -->
+            <h2 id="txt-mode-title" class="text-white text-sm font-bold mb-2">Arama Modunu Seçin:</h2>
+            <div class="flex flex-col gap-3 mb-6 bg-gray-900 p-3 rounded-lg border border-gray-700">
+                <label class="flex items-center text-sm text-lightGrey cursor-pointer">
+                    <input type="radio" name="searchMode" value="playlist_pool" checked class="w-4 h-4 text-spotify bg-gray-800 border-gray-700 focus:ring-spotify focus:ring-2">
+                    <span class="ml-2 w-full hover:text-white transition-colors">
+                        <strong id="txt-mode-pool-title" class="text-white">Geniş Keşif (Tavsiye Edilen):</strong> <span id="txt-mode-pool-desc">"oyun oynarken", "türkçe rap" gibi konular yazın. Tüm Spotify kullanıcı listelerindeki ortak güzel parçaları çıkarır.</span>
+                    </span>
+                </label>
+                <label class="flex items-center text-sm text-lightGrey cursor-pointer">
+                    <input type="radio" name="searchMode" value="genre" class="w-4 h-4 text-spotify bg-gray-800 border-gray-700 focus:ring-spotify focus:ring-2">
+                    <span class="ml-2 w-full hover:text-white transition-colors">
+                        <strong id="txt-mode-genre-title" class="text-gray-300">Resmi Müzik Türü:</strong> <span id="txt-mode-genre-desc">Sadece İngilizce orijinal tür adları (örn: rock, edm)</span>
+                    </span>
+                </label>
+                <label class="flex items-center text-sm text-lightGrey cursor-pointer">
+                    <input type="radio" name="searchMode" value="artist" class="w-4 h-4 text-spotify bg-gray-800 border-gray-700 focus:ring-spotify focus:ring-2">
+                    <span class="ml-2 w-full hover:text-white transition-colors">
+                        <strong id="txt-mode-artist-title" class="text-gray-300">Sanatçıya Göre:</strong> <span id="txt-mode-artist-desc">Belirli sanatçıları virgülle yazın.</span>
+                    </span>
                 </label>
             </div>
 
-            <!-- Global Opsiyon: AI Filtresi -->
-            <div class="flex items-center pt-1">
-                <input id="avoidAI" type="checkbox"
-                    class="w-5 h-5 accent-spotify bg-gray-800 border-gray-700 rounded cursor-pointer">
-                <label for="avoidAI" id="txt-label-ai" class="ml-2 block text-sm text-gray-300 cursor-pointer select-none">
-                    Yapay Zeka (AI) Üretimi Olanları Geç (Tahmini Filtre)
-                </label>
-            </div>
+            <form id="playlistForm" class="space-y-5">
+                <div>
+                    <label id="txt-label-input" class="block text-sm font-medium text-lightGrey mb-1">Cümle, Müzik Türü veya Sanatçı Adı Yazın</label>
+                    <input type="text" id="targetInput" placeholder="Örn: araba sürerken, türkçe rap (virgülle birden fazla)" required
+                        class="w-full bg-[#282828] text-white border border-transparent focus:border-spotify focus:ring-0 rounded-md px-4 py-2 mt-1 outline-none transition-all placeholder-gray-500">
+                </div>
 
-            <!-- Submit Butonu -->
-            <button type="submit" id="submitBtn" class="w-full bg-spotify hover:bg-spotifyHover text-black font-bold py-3 px-4 rounded-full transition-transform active:scale-95 flex items-center justify-center gap-2 mt-4">
-                <span id="txt-btn-generate">Çalma Listesi Oluştur</span>
-            </button>
-        </form>
+                <div>
+                    <label class="flex justify-between text-sm font-medium text-lightGrey">
+                        <span id="txt-label-total-tracks">Şarkı Sayısı</span>
+                        <span id="totalTracksValue" class="text-spotify font-bold">100</span>
+                    </label>
+                    <input type="range" id="totalTracks" min="20" max="200" step="10" value="100">
+                </div>
 
-        <!-- Loading Durumu -->
-        <div id="loading" class="hidden mt-6 flex flex-col items-center justify-center">
-            <div class="loader mb-3"></div>
-            <p id="txt-loading" class="text-lightGrey text-sm animate-pulse">Şarkılar aranıyor ve filtreleniyor, lütfen bekleyin...</p>
+                <div>
+                    <label id="txt-label-distribution" class="block text-sm font-medium text-lightGrey mb-1">Karıştırma Tarzı</label>
+                    <select id="distributionStyle"
+                        class="w-full bg-[#282828] text-white border border-transparent focus:border-spotify focus:ring-0 rounded-md px-4 py-2 outline-none transition-all">
+                        <option value="familiar" id="txt-dist-familiar">Tanıdık Ağırlıklı (50/30/20)</option>
+                        <option value="balanced" selected id="txt-dist-balanced">Dengeli (30/40/30)</option>
+                        <option value="discovery" id="txt-dist-discovery">Keşif Ağırlıklı (15/30/55)</option>
+                        <option value="deep_discovery" id="txt-dist-deep-discovery">Derin Keşif (10/20/70)</option>
+                    </select>
+                </div>
+
+                <div class="flex items-center pt-2">
+                    <input id="avoidDuplicates" type="checkbox" class="w-5 h-5 accent-spotify bg-gray-800 border-gray-700 rounded cursor-pointer">
+                    <label for="avoidDuplicates" id="txt-label-duplicate" class="ml-2 block text-sm text-gray-300 cursor-pointer select-none">
+                        Daha Önce Dinlediklerimi Geç (Anti-Duplication)
+                    </label>
+                </div>
+
+                <div class="flex items-center pt-1">
+                    <input id="avoidAI" type="checkbox" class="w-5 h-5 accent-spotify bg-gray-800 border-gray-700 rounded cursor-pointer">
+                    <label for="avoidAI" id="txt-label-ai" class="ml-2 block text-sm text-gray-300 cursor-pointer select-none">
+                        Yapay Zeka (AI) Üretimi Olanları Geç (Tahmini Filtre)
+                    </label>
+                </div>
+
+                <div class="flex items-center pt-1">
+                    <input id="useAiExpansion" type="checkbox" class="w-5 h-5 accent-spotify bg-gray-800 border-gray-700 rounded cursor-pointer">
+                    <label for="useAiExpansion" id="txt-label-ai-expand" class="ml-2 block text-sm text-gray-300 cursor-pointer select-none">
+                        AI ile Temamı Genişlet (5-8 Spotify aramasına çevirir, Gemini Flash)
+                    </label>
+                </div>
+
+                <div class="flex items-center pt-1">
+                    <input id="generateCover" type="checkbox" class="w-5 h-5 accent-spotify bg-gray-800 border-gray-700 rounded cursor-pointer">
+                    <label for="generateCover" id="txt-label-gen-cover" class="ml-2 block text-sm text-gray-300 cursor-pointer select-none">
+                        AI ile Playlist Kapağı Oluştur (Pollinations.ai, ücretsiz, ~5 sn)
+                    </label>
+                </div>
+
+                <div class="flex items-center pt-1">
+                    <input id="publicPlaylist" type="checkbox" class="w-5 h-5 accent-spotify bg-gray-800 border-gray-700 rounded cursor-pointer">
+                    <label for="publicPlaylist" id="txt-label-public" class="ml-2 block text-sm text-gray-300 cursor-pointer select-none">
+                        Listeyi Herkese Açık Yap
+                    </label>
+                </div>
+
+                <details class="bg-gray-900 border border-gray-700 rounded-lg p-3">
+                    <summary id="txt-advanced-filters" class="text-sm font-bold text-spotify cursor-pointer select-none">Gelişmiş Filtreler</summary>
+                    <div class="mt-3 space-y-3">
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label id="txt-label-year-from" class="block text-xs text-lightGrey mb-1">Min Yıl</label>
+                                <input type="number" id="yearFrom" min="1900" max="2100" placeholder="1990"
+                                    class="w-full bg-[#282828] text-white border border-transparent focus:border-spotify rounded-md px-3 py-1.5 text-sm outline-none">
+                            </div>
+                            <div>
+                                <label id="txt-label-year-to" class="block text-xs text-lightGrey mb-1">Max Yıl</label>
+                                <input type="number" id="yearTo" min="1900" max="2100" placeholder="2025"
+                                    class="w-full bg-[#282828] text-white border border-transparent focus:border-spotify rounded-md px-3 py-1.5 text-sm outline-none">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label id="txt-label-min-duration" class="block text-xs text-lightGrey mb-1">Min Süre (dk)</label>
+                                <input type="number" id="minDurationMin" min="0" max="60" step="0.5" placeholder="2"
+                                    class="w-full bg-[#282828] text-white border border-transparent focus:border-spotify rounded-md px-3 py-1.5 text-sm outline-none">
+                            </div>
+                            <div>
+                                <label id="txt-label-max-duration" class="block text-xs text-lightGrey mb-1">Max Süre (dk)</label>
+                                <input type="number" id="maxDurationMin" min="0" max="60" step="0.5" placeholder="6"
+                                    class="w-full bg-[#282828] text-white border border-transparent focus:border-spotify rounded-md px-3 py-1.5 text-sm outline-none">
+                            </div>
+                        </div>
+                        <div class="flex items-center pt-1">
+                            <input id="excludeExplicit" type="checkbox" class="w-5 h-5 accent-spotify bg-gray-800 border-gray-700 rounded cursor-pointer">
+                            <label for="excludeExplicit" id="txt-label-explicit" class="ml-2 block text-sm text-gray-300 cursor-pointer select-none">
+                                Explicit İçeriği Gizle
+                            </label>
+                        </div>
+                        <div class="border-t border-gray-700 pt-3 mt-1">
+                            <p id="txt-style-filters-title" class="text-xs text-lightGrey mb-1">Stil Filtreleri:</p>
+                            <div class="flex items-center pt-1">
+                                <input id="excludeRemix" type="checkbox" class="w-5 h-5 accent-spotify bg-gray-800 border-gray-700 rounded cursor-pointer">
+                                <label for="excludeRemix" id="txt-label-no-remix" class="ml-2 block text-sm text-gray-300 cursor-pointer select-none">Remix versiyonlarını gizle</label>
+                            </div>
+                            <div class="flex items-center pt-1">
+                                <input id="excludeLive" type="checkbox" class="w-5 h-5 accent-spotify bg-gray-800 border-gray-700 rounded cursor-pointer">
+                                <label for="excludeLive" id="txt-label-no-live" class="ml-2 block text-sm text-gray-300 cursor-pointer select-none">Live kayıtları gizle</label>
+                            </div>
+                            <div class="flex items-center pt-1">
+                                <input id="excludeCover" type="checkbox" class="w-5 h-5 accent-spotify bg-gray-800 border-gray-700 rounded cursor-pointer">
+                                <label for="excludeCover" id="txt-label-no-cover" class="ml-2 block text-sm text-gray-300 cursor-pointer select-none">Cover'ları gizle</label>
+                            </div>
+                            <div class="flex items-center pt-1">
+                                <input id="acousticOnly" type="checkbox" class="w-5 h-5 accent-spotify bg-gray-800 border-gray-700 rounded cursor-pointer">
+                                <label for="acousticOnly" id="txt-label-acoustic-only" class="ml-2 block text-sm text-gray-300 cursor-pointer select-none">Sadece akustik versiyonlar</label>
+                            </div>
+                            <div class="flex items-center pt-1">
+                                <input id="instrumentalOnly" type="checkbox" class="w-5 h-5 accent-spotify bg-gray-800 border-gray-700 rounded cursor-pointer">
+                                <label for="instrumentalOnly" id="txt-label-instrumental-only" class="ml-2 block text-sm text-gray-300 cursor-pointer select-none">Sadece enstrümantal/karaoke</label>
+                            </div>
+                        </div>
+                    </div>
+                </details>
+
+                <div class="flex gap-2 mt-4">
+                    <button type="submit" id="submitBtn" class="flex-1 bg-spotify hover:bg-spotifyHover text-black font-bold py-3 px-4 rounded-full transition-transform active:scale-95 flex items-center justify-center gap-2">
+                        <span id="txt-btn-generate">Çalma Listesi Oluştur</span>
+                    </button>
+                    <button type="button" id="btn-save-preset" class="px-5 bg-gray-700 hover:bg-gray-600 text-white py-3 rounded-full transition text-sm font-medium" title="Bu aramayı kaydet">
+                        <span id="txt-btn-save-preset">Kaydet</span>
+                    </button>
+                </div>
+            </form>
         </div>
 
-        <!-- Sonuç Ekranı -->
-        <div id="result" class="hidden mt-6 text-center bg-[#282828] p-4 rounded-lg border border-[#333]">
+        <!-- Progress View -->
+        <div id="view-progress" class="hidden">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="loader shrink-0"></div>
+                <p id="txt-progress-title" class="text-white font-medium text-sm">Şarkılar derleniyor...</p>
+            </div>
+            <div id="progress-log" class="bg-[#0a0a0a] border border-gray-800 rounded-md p-3 text-xs font-mono max-h-56 overflow-y-auto space-y-1"></div>
+        </div>
+
+        <!-- Review View -->
+        <div id="view-review" class="hidden">
+            <p id="txt-review-intro" class="text-lightGrey text-sm mb-3">Listeni gözden geçir, beğenmediklerini çıkar, sonra Spotify'a ekle.</p>
+            <div class="flex justify-between items-center mb-3 px-1">
+                <span id="review-count" class="text-sm text-spotify font-bold">0</span>
+                <button id="btn-clear" type="button" class="text-xs text-lightGrey hover:text-red-400 transition">
+                    <span id="txt-btn-clear">Hepsini Temizle</span>
+                </button>
+            </div>
+            <div id="track-list" class="space-y-1.5 max-h-96 overflow-y-auto pr-1"></div>
+            <div class="flex gap-2 mt-4">
+                <button id="btn-commit" type="button" class="flex-1 bg-spotify hover:bg-spotifyHover text-black font-bold py-2.5 px-4 rounded-full transition-transform active:scale-95">
+                    <span id="txt-btn-commit">Onayla & Spotify'a Ekle</span>
+                </button>
+                <button id="btn-cancel" type="button" class="px-5 bg-gray-700 hover:bg-gray-600 text-white py-2.5 rounded-full transition">
+                    <span id="txt-btn-cancel">İptal</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Result View -->
+        <div id="view-result" class="hidden text-center bg-[#282828] p-4 rounded-lg border border-[#333]">
             <p id="txt-res-success" class="text-white font-medium mb-1">🎉 Başarılı!</p>
             <p id="result-text" class="text-lightGrey text-sm mb-3">Yeni çalma listen hazır.</p>
-            <a id="playlist-link" href="#" target="_blank"
-                class="inline-block border border-spotify text-white px-5 py-2 rounded-full text-sm font-bold hover:bg-spotify hover:text-black transition-colors">
-                <span id="txt-btn-open">Spotify'da Aç</span>
-            </a>
+            <div class="flex flex-col gap-2 items-center">
+                <a id="playlist-link" href="#" target="_blank"
+                    class="inline-block border border-spotify text-white px-5 py-2 rounded-full text-sm font-bold hover:bg-spotify hover:text-black transition-colors">
+                    <span id="txt-btn-open">Spotify'da Aç</span>
+                </a>
+                <button id="btn-new" type="button" class="text-xs text-lightGrey hover:text-white transition mt-1">
+                    <span id="txt-btn-new">Yeni Liste Oluştur</span>
+                </button>
+            </div>
         </div>
-        
-        <!-- Hata Ekranı -->
-        <div id="error" class="hidden mt-4 text-center p-3 rounded-lg bg-red-900 border border-red-500 text-red-200 text-sm">
-            Bir hata oluştu.
+
+        <!-- Error View -->
+        <div id="view-error" class="hidden mt-4">
+            <div class="text-center p-3 rounded-lg bg-red-900 border border-red-500 text-red-200 text-sm">
+                <p id="error-text">Bir hata oluştu.</p>
+            </div>
+            <button id="btn-retry" type="button" class="w-full mt-3 bg-gray-700 hover:bg-gray-600 text-white font-medium py-2 rounded-full transition">
+                <span id="txt-btn-retry">Tekrar Dene</span>
+            </button>
         </div>
 
     </div>
@@ -184,11 +360,65 @@
                 modeArtistTitle: 'Sanatçıya Göre:',
                 modeArtistDesc: 'Belirli sanatçıları virgülle yazın.',
                 labelInput: 'Cümle, Müzik Türü veya Sanatçı Adı Yazın',
-                placeholderInput: 'Örn: araba sürerken, türkçe rap, sagopa...',
+                placeholderInput: 'Örn: araba sürerken, türkçe rap (virgülle birden fazla)',
+                vibeTitle: 'Hazır Vibe (veya kendi temanı yaz)',
+                vibeCustom: 'Kişisel arama',
+                vibePresets: {
+                    morning_coffee: 'Sabah Kahvesi',
+                    night_drive: 'Gece Sürüşü',
+                    workout: 'Antrenman',
+                    study: 'Çalışma',
+                    party: 'Parti',
+                    rainy_day: 'Yağmurlu Gün',
+                    romantic: 'Romantik',
+                    focus: 'Odaklanma',
+                    relax: 'Rahatlama'
+                },
                 labelDuplicate: 'Daha Önce Dinlediklerimi Geç (Anti-Duplication)',
                 labelAI: 'Yapay Zeka (AI) Üretimi Olanları Geç (Tahmini Filtre)',
+                labelAiExpand: 'AI ile Temamı Genişlet (5-8 Spotify aramasına çevirir, Gemini Flash)',
+                labelGenCover: 'AI ile Playlist Kapağı Oluştur (Pollinations.ai, ücretsiz, ~5 sn)',
+                labelPublic: 'Listeyi Herkese Açık Yap',
+                labelTotalTracks: 'Şarkı Sayısı',
+                labelDistribution: 'Karıştırma Tarzı',
+                distFamiliar: 'Tanıdık Ağırlıklı (50/30/20)',
+                distBalanced: 'Dengeli (30/40/30)',
+                distDiscovery: 'Keşif Ağırlıklı (15/30/55)',
+                distDeepDiscovery: 'Derin Keşif (10/20/70)',
+                advancedFilters: 'Gelişmiş Filtreler',
+                labelYearFrom: 'Min Yıl',
+                labelYearTo: 'Max Yıl',
+                labelMinDuration: 'Min Süre (dk)',
+                labelMaxDuration: 'Max Süre (dk)',
+                labelExcludeExplicit: 'Explicit İçeriği Gizle',
+                styleFiltersTitle: 'Stil Filtreleri:',
+                labelExcludeRemix: 'Remix versiyonlarını gizle',
+                labelExcludeLive: 'Live kayıtları gizle',
+                labelExcludeCover: 'Cover\'ları gizle',
+                labelAcousticOnly: 'Sadece akustik versiyonlar',
+                labelInstrumentalOnly: 'Sadece enstrümantal/karaoke',
+                quickPicksTitle: 'Hızlı Erişim',
+                historyTitle: 'Son Aramalar',
+                presetsTitle: 'Kayıtlı Preset\'lerim',
+                emptyHistory: '(henüz arama yok)',
+                emptyPresets: '(henüz kayıtlı preset yok — formu doldurup "Kaydet"e tıkla)',
+                btnSavePreset: 'Kaydet',
+                promptPresetName: 'Preset adı:',
+                presetNoName: 'Adsız preset',
                 btnGenerate: 'Çalma Listesi Oluştur',
-                loading: 'Şarkılar aranıyor ve filtreleniyor, lütfen bekleyin...',
+                progressTitle: 'Şarkılar derleniyor...',
+                committingTitle: 'Spotify\'a ekleniyor...',
+                reviewIntro: 'Listeni gözden geçir, beğenmediklerini çıkar, sonra Spotify\'a ekle.',
+                reviewCount: (n) => `${n} şarkı seçili`,
+                btnCommit: 'Onayla & Spotify\'a Ekle',
+                btnCancel: 'İptal',
+                btnClear: 'Hepsini Temizle',
+                btnRetry: 'Tekrar Dene',
+                btnNew: 'Yeni Liste Oluştur',
+                bucketPopular: 'Popüler',
+                bucketMedium: 'Orta',
+                bucketDiscovery: 'Keşif',
+                noTracksSelected: 'En az 1 şarkı seçmelisin.',
                 resSuccess: '🎉 Başarılı!',
                 resText: (count, name) => `${count} şarkıdan oluşan "${name}" isimli listeniz başarıyla Spotify'a eklendi.`,
                 btnOpen: 'Spotify\'da Aç',
@@ -205,11 +435,65 @@
                 modeArtistTitle: 'By Artist:',
                 modeArtistDesc: 'Type specific artist names separated by commas.',
                 labelInput: 'Type Phrase, Genre, or Artist Name',
-                placeholderInput: 'e.g., synthwave, night drive, arctic monkeys...',
+                placeholderInput: 'e.g., synthwave, night drive (comma-separated for multi-theme)',
+                vibeTitle: 'Vibe Preset (or write your own theme)',
+                vibeCustom: 'Custom search',
+                vibePresets: {
+                    morning_coffee: 'Morning Coffee',
+                    night_drive: 'Night Drive',
+                    workout: 'Workout',
+                    study: 'Study',
+                    party: 'Party',
+                    rainy_day: 'Rainy Day',
+                    romantic: 'Romantic',
+                    focus: 'Focus',
+                    relax: 'Relax'
+                },
                 labelDuplicate: 'Avoid Previously Heard Tracks (Anti-Duplication)',
                 labelAI: 'Filter AI Generated Tracks (Estimated Filter)',
+                labelAiExpand: 'Expand My Theme with AI (turns it into 5-8 Spotify searches, Gemini Flash)',
+                labelGenCover: 'Generate AI Playlist Cover (Pollinations.ai, free, ~5s)',
+                labelPublic: 'Make Playlist Public',
+                labelTotalTracks: 'Track Count',
+                labelDistribution: 'Mix Style',
+                distFamiliar: 'Familiar-heavy (50/30/20)',
+                distBalanced: 'Balanced (30/40/30)',
+                distDiscovery: 'Discovery-heavy (15/30/55)',
+                distDeepDiscovery: 'Deep Discovery (10/20/70)',
+                advancedFilters: 'Advanced Filters',
+                labelYearFrom: 'Min Year',
+                labelYearTo: 'Max Year',
+                labelMinDuration: 'Min Duration (min)',
+                labelMaxDuration: 'Max Duration (min)',
+                labelExcludeExplicit: 'Hide Explicit Content',
+                styleFiltersTitle: 'Style Filters:',
+                labelExcludeRemix: 'Hide remixes',
+                labelExcludeLive: 'Hide live recordings',
+                labelExcludeCover: 'Hide cover versions',
+                labelAcousticOnly: 'Acoustic versions only',
+                labelInstrumentalOnly: 'Instrumental/karaoke only',
+                quickPicksTitle: 'Quick Picks',
+                historyTitle: 'Recent Searches',
+                presetsTitle: 'My Saved Presets',
+                emptyHistory: '(no searches yet)',
+                emptyPresets: '(no saved presets yet — fill the form and click "Save")',
+                btnSavePreset: 'Save',
+                promptPresetName: 'Preset name:',
+                presetNoName: 'Untitled preset',
                 btnGenerate: 'Generate Playlist',
-                loading: 'Searching and filtering tracks, please wait...',
+                progressTitle: 'Compiling tracks...',
+                committingTitle: 'Adding to Spotify...',
+                reviewIntro: 'Review your list, remove what you don\'t want, then add to Spotify.',
+                reviewCount: (n) => `${n} tracks selected`,
+                btnCommit: 'Approve & Add to Spotify',
+                btnCancel: 'Cancel',
+                btnClear: 'Clear All',
+                btnRetry: 'Try Again',
+                btnNew: 'Create Another List',
+                bucketPopular: 'Popular',
+                bucketMedium: 'Medium',
+                bucketDiscovery: 'Discovery',
+                noTracksSelected: 'You must keep at least 1 track.',
                 resSuccess: '🎉 Success!',
                 resText: (count, name) => `Your playlist "${name}" with ${count} tracks has been added to Spotify.`,
                 btnOpen: 'Open in Spotify',
@@ -219,13 +503,53 @@
 
         let currentLang = localStorage.getItem('lang') || 'tr';
 
+        // Tek doğruluk kaynağı uygulama state'i
+        const state = {
+            tracks: [],
+            meta: { targetInput: '', lang: 'tr', publicPlaylist: false }
+        };
+
+        const VIEWS = ['form', 'progress', 'review', 'result', 'error'];
+        function setView(name) {
+            for (const v of VIEWS) {
+                document.getElementById('view-' + v).classList.toggle('hidden', v !== name);
+            }
+        }
+
+        function escapeHtml(s) {
+            return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+        }
+
+        function formatDuration(ms) {
+            if (ms == null) return '--:--';
+            const total = Math.floor(ms / 1000);
+            const min = Math.floor(total / 60);
+            const sec = (total % 60).toString().padStart(2, '0');
+            return `${min}:${sec}`;
+        }
+
+        function bucketBadgeClass(bucket) {
+            return ({
+                popular: 'bg-green-500/20 text-green-400',
+                medium: 'bg-yellow-500/20 text-yellow-400',
+                discovery: 'bg-blue-500/20 text-blue-400'
+            })[bucket] || 'bg-gray-700 text-gray-300';
+        }
+
+        function bucketLabel(bucket) {
+            const lang = translations[currentLang];
+            return ({
+                popular: lang.bucketPopular,
+                medium: lang.bucketMedium,
+                discovery: lang.bucketDiscovery
+            })[bucket] || bucket;
+        }
+
         function updateUI() {
-            console.log("Updating UI to:", currentLang);
             const lang = translations[currentLang];
             if (!lang) return;
-
             document.documentElement.lang = currentLang;
-            
+
             const elements = {
                 'txt-title': lang.title,
                 'txt-subtitle': lang.subtitle,
@@ -239,8 +563,39 @@
                 'txt-label-input': lang.labelInput,
                 'txt-label-duplicate': lang.labelDuplicate,
                 'txt-label-ai': lang.labelAI,
+                'txt-label-ai-expand': lang.labelAiExpand,
+                'txt-label-gen-cover': lang.labelGenCover,
+                'txt-label-public': lang.labelPublic,
+                'txt-label-total-tracks': lang.labelTotalTracks,
+                'txt-label-distribution': lang.labelDistribution,
+                'txt-dist-familiar': lang.distFamiliar,
+                'txt-dist-balanced': lang.distBalanced,
+                'txt-dist-discovery': lang.distDiscovery,
+                'txt-dist-deep-discovery': lang.distDeepDiscovery,
+                'txt-advanced-filters': lang.advancedFilters,
+                'txt-label-year-from': lang.labelYearFrom,
+                'txt-label-year-to': lang.labelYearTo,
+                'txt-label-min-duration': lang.labelMinDuration,
+                'txt-label-max-duration': lang.labelMaxDuration,
+                'txt-label-explicit': lang.labelExcludeExplicit,
+                'txt-style-filters-title': lang.styleFiltersTitle,
+                'txt-label-no-remix': lang.labelExcludeRemix,
+                'txt-label-no-live': lang.labelExcludeLive,
+                'txt-label-no-cover': lang.labelExcludeCover,
+                'txt-label-acoustic-only': lang.labelAcousticOnly,
+                'txt-label-instrumental-only': lang.labelInstrumentalOnly,
+                'txt-quickpicks-title': lang.quickPicksTitle,
+                'txt-history-title': lang.historyTitle,
+                'txt-presets-title': lang.presetsTitle,
+                'txt-btn-save-preset': lang.btnSavePreset,
                 'txt-btn-generate': lang.btnGenerate,
-                'txt-loading': lang.loading,
+                'txt-progress-title': lang.progressTitle,
+                'txt-review-intro': lang.reviewIntro,
+                'txt-btn-commit': lang.btnCommit,
+                'txt-btn-cancel': lang.btnCancel,
+                'txt-btn-clear': lang.btnClear,
+                'txt-btn-retry': lang.btnRetry,
+                'txt-btn-new': lang.btnNew,
                 'txt-res-success': lang.resSuccess,
                 'txt-btn-open': lang.btnOpen
             };
@@ -253,10 +608,20 @@
             const targetInput = document.getElementById('targetInput');
             if (targetInput) targetInput.placeholder = lang.placeholderInput;
 
-            // Update toggle styles
+            // Vibe preset dropdown — başlık, "Kişisel arama" satırı ve preset adları
+            const vibeTitleEl = document.getElementById('txt-vibe-title');
+            if (vibeTitleEl) vibeTitleEl.innerText = lang.vibeTitle;
+            const vibeCustomOpt = document.querySelector('#vibePreset option[value=""]');
+            if (vibeCustomOpt) vibeCustomOpt.innerText = lang.vibeCustom;
+            if (lang.vibePresets) {
+                for (const k of Object.keys(lang.vibePresets)) {
+                    const opt = document.querySelector(`#vibePreset option[value="${k}"]`);
+                    if (opt) opt.innerText = lang.vibePresets[k];
+                }
+            }
+
             const btnTr = document.getElementById('btn-tr');
             const btnEn = document.getElementById('btn-en');
-            
             if (btnTr && btnEn) {
                 if (currentLang === 'tr') {
                     btnTr.className = "text-xs font-bold px-2 py-1 rounded bg-spotify text-black opacity-100 transition-all border border-spotify pointer-events-none";
@@ -266,81 +631,452 @@
                     btnTr.className = "text-xs font-bold px-2 py-1 rounded bg-transparent text-lightGrey opacity-60 hover:opacity-100 transition-all border border-gray-700 cursor-pointer";
                 }
             }
+
+            // Review ekranı görünüyorsa count'u da yenile
+            if (!document.getElementById('view-review').classList.contains('hidden')) {
+                document.getElementById('review-count').innerText = lang.reviewCount(state.tracks.length);
+            }
         }
 
         function changeLang(lang) {
-            console.log("Language changing to:", lang);
             currentLang = lang;
             localStorage.setItem('lang', lang);
             updateUI();
+            // Track listesindeki bucket etiketlerini de yenile
+            if (state.tracks.length > 0 && !document.getElementById('view-review').classList.contains('hidden')) {
+                renderReview();
+            }
         }
 
-        // Attach event listeners for buttons
+        function appendLog(msg) {
+            const line = document.createElement('div');
+            line.className = 'text-xs text-lightGrey';
+            line.textContent = '› ' + msg;
+            const log = document.getElementById('progress-log');
+            log.appendChild(line);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function renderReview() {
+            const lang = translations[currentLang];
+            const list = document.getElementById('track-list');
+            list.innerHTML = state.tracks.map((t, i) => `
+                <div class="flex items-center gap-2 bg-[#282828] hover:bg-[#333] rounded-md p-2 transition-colors">
+                    ${t.albumImage
+                        ? `<img src="${escapeHtml(t.albumImage)}" alt="" class="w-10 h-10 rounded shrink-0 object-cover">`
+                        : '<div class="w-10 h-10 bg-gray-700 rounded shrink-0"></div>'}
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm text-white truncate flex items-center gap-1">
+                            <span class="truncate">${escapeHtml(t.name)}</span>
+                            ${t.explicit ? '<span class="text-[9px] bg-gray-600 text-gray-200 px-1 rounded shrink-0">E</span>' : ''}
+                        </p>
+                        <p class="text-xs text-lightGrey truncate">${escapeHtml(t.artists.join(', '))}</p>
+                    </div>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded ${bucketBadgeClass(t.bucket)} shrink-0 hidden sm:inline-block">${escapeHtml(bucketLabel(t.bucket))}</span>
+                    <span class="text-xs text-lightGrey shrink-0 w-10 text-right tabular-nums">${formatDuration(t.duration_ms)}</span>
+                    <button type="button" data-action="remove" data-idx="${i}"
+                        class="text-gray-500 hover:text-red-400 hover:bg-red-900/30 w-7 h-7 rounded flex items-center justify-center text-lg leading-none shrink-0 transition"
+                        aria-label="Sil">×</button>
+                </div>
+            `).join('');
+            document.getElementById('review-count').innerText = lang.reviewCount(state.tracks.length);
+        }
+
+        function showError(msg) {
+            document.getElementById('error-text').textContent = msg;
+            setView('error');
+        }
+
+        function showResult(data) {
+            const lang = translations[currentLang];
+            document.getElementById('result-text').innerText = lang.resText(data.count, data.name);
+            document.getElementById('playlist-link').href = data.url;
+            setView('result');
+        }
+
+        async function streamPreview(payload) {
+            setView('progress');
+            document.getElementById('progress-log').innerHTML = '';
+            document.getElementById('txt-progress-title').innerText = translations[currentLang].progressTitle;
+
+            const response = await fetch('/api/preview', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            // Validation hatası gibi non-stream JSON cevaplar için
+            if (!response.ok) {
+                const errBody = await response.json().catch(() => ({}));
+                throw new Error(errBody.error || translations[currentLang].errorUnknown);
+            }
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder('utf-8');
+            let buffer = '';
+            let completeEvent = null;
+            let errorEvent = null;
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                buffer += decoder.decode(value, { stream: true });
+                let nl;
+                while ((nl = buffer.indexOf('\n')) >= 0) {
+                    const line = buffer.slice(0, nl).trim();
+                    buffer = buffer.slice(nl + 1);
+                    if (!line) continue;
+                    let event;
+                    try { event = JSON.parse(line); }
+                    catch { continue; }
+                    if (event.type === 'progress') {
+                        appendLog(event.message);
+                    } else if (event.type === 'complete') {
+                        completeEvent = event;
+                    } else if (event.type === 'error') {
+                        errorEvent = event;
+                    }
+                }
+            }
+
+            if (errorEvent) {
+                throw new Error(errorEvent.message);
+            }
+            if (!completeEvent) {
+                throw new Error(translations[currentLang].errorUnknown);
+            }
+            return completeEvent;
+        }
+
+        async function commitPlaylist() {
+            const lang = translations[currentLang];
+            if (state.tracks.length === 0) {
+                showError(lang.noTracksSelected);
+                return;
+            }
+            setView('progress');
+            document.getElementById('progress-log').innerHTML = '';
+            document.getElementById('txt-progress-title').innerText = lang.committingTitle;
+            appendLog(lang.committingTitle);
+
+            try {
+                const response = await fetch('/api/commit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        uris: state.tracks.map(t => t.uri),
+                        targetInput: state.meta.targetInput,
+                        lang: state.meta.lang,
+                        publicPlaylist: state.meta.publicPlaylist,
+                        generateCover: !!state.meta.generateCover
+                    })
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || lang.errorUnknown);
+                showResult(data);
+            } catch (err) {
+                showError(err.message);
+            }
+        }
+
+        // === Event Wiring ===
         document.getElementById('btn-tr').addEventListener('click', () => changeLang('tr'));
         document.getElementById('btn-en').addEventListener('click', () => changeLang('en'));
 
-        // Initialize UI
-        updateUI();
+        const totalTracksInput = document.getElementById('totalTracks');
+        const totalTracksValueEl = document.getElementById('totalTracksValue');
+        totalTracksInput.addEventListener('input', () => {
+            totalTracksValueEl.innerText = totalTracksInput.value;
+        });
 
-        // Form Submit İslemi
+        // === localStorage — geçmiş + kayıtlı preset'ler ===
+        const HISTORY_KEY = 'discoveryHistory';
+        const PRESETS_KEY = 'discoveryPresets';
+        const HISTORY_MAX = 10;
+
+        function loadHistory() {
+            try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch { return []; }
+        }
+        function loadPresets() {
+            try { return JSON.parse(localStorage.getItem(PRESETS_KEY) || '[]'); } catch { return []; }
+        }
+        function saveHistory(arr) { localStorage.setItem(HISTORY_KEY, JSON.stringify(arr)); }
+        function savePresets(arr) { localStorage.setItem(PRESETS_KEY, JSON.stringify(arr)); }
+
+        function payloadLabel(payload) {
+            if (payload.vibePreset) {
+                return (translations[currentLang].vibePresets || {})[payload.vibePreset] || payload.vibePreset;
+            }
+            let label = payload.targetInput || translations[currentLang].presetNoName;
+            const tags = [];
+            if (payload.useAiExpansion) tags.push('AI');
+            if (payload.totalTracks && payload.totalTracks !== 100) tags.push(payload.totalTracks);
+            return tags.length ? `${label} (${tags.join(', ')})` : label;
+        }
+
+        function addToHistory(payload) {
+            const label = payloadLabel(payload);
+            const list = loadHistory().filter(h => h.label !== label);
+            list.unshift({ label, payload, ts: Date.now() });
+            if (list.length > HISTORY_MAX) list.length = HISTORY_MAX;
+            saveHistory(list);
+        }
+
+        function applyPayload(payload) {
+            // vibe preset / search mode
+            const vibe = payload.vibePreset || '';
+            document.getElementById('vibePreset').value = vibe;
+            if (!vibe) {
+                document.getElementById('targetInput').value = payload.targetInput || '';
+                const modeRadio = document.querySelector(`input[name="searchMode"][value="${payload.searchMode || 'playlist_pool'}"]`);
+                if (modeRadio) modeRadio.checked = true;
+            }
+            // checkboxes
+            const setCheck = (id, val) => { const el = document.getElementById(id); if (el) el.checked = !!val; };
+            setCheck('avoidDuplicates', payload.avoidDuplicates);
+            setCheck('avoidAI', payload.avoidAI);
+            setCheck('useAiExpansion', payload.useAiExpansion);
+            setCheck('generateCover', payload.generateCover);
+            setCheck('publicPlaylist', payload.publicPlaylist);
+            setCheck('excludeExplicit', payload.excludeExplicit);
+            setCheck('acousticOnly', payload.acousticOnly);
+            setCheck('instrumentalOnly', payload.instrumentalOnly);
+            setCheck('excludeRemix', payload.excludeRemix);
+            setCheck('excludeLive', payload.excludeLive);
+            setCheck('excludeCover', payload.excludeCover);
+            // numbers / range
+            const tt = payload.totalTracks || 100;
+            document.getElementById('totalTracks').value = tt;
+            const ttv = document.getElementById('totalTracksValue');
+            if (ttv) ttv.innerText = tt;
+            document.getElementById('distributionStyle').value = payload.distributionStyle || 'balanced';
+            document.getElementById('yearFrom').value = payload.yearFrom || '';
+            document.getElementById('yearTo').value = payload.yearTo || '';
+            document.getElementById('minDurationMin').value = payload.minDurationSec ? (payload.minDurationSec / 60) : '';
+            document.getElementById('maxDurationMin').value = payload.maxDurationSec ? (payload.maxDurationSec / 60) : '';
+            applyVibePresetState();
+        }
+
+        function renderQuickPicks() {
+            const lang = translations[currentLang];
+            const history = loadHistory();
+            const presets = loadPresets();
+            const container = document.getElementById('quickPicks');
+            container.classList.toggle('hidden', history.length === 0 && presets.length === 0);
+
+            const renderRow = (item, source, idx) => `
+                <div class="flex items-center gap-2 bg-[#282828] hover:bg-[#333] rounded px-2 py-1 transition-colors">
+                    <span class="flex-1 text-sm text-white truncate cursor-pointer" data-source="${source}" data-action="apply" data-idx="${idx}">${escapeHtml(item.label)}</span>
+                    <button type="button" data-source="${source}" data-action="delete" data-idx="${idx}" class="text-gray-500 hover:text-red-400 w-6 h-6 flex items-center justify-center text-lg leading-none" aria-label="Sil">×</button>
+                </div>`;
+
+            document.getElementById('historyList').innerHTML = history.length === 0
+                ? `<p class="text-xs text-gray-600">${escapeHtml(lang.emptyHistory)}</p>`
+                : history.map((h, i) => renderRow(h, 'history', i)).join('');
+            document.getElementById('presetsList').innerHTML = presets.length === 0
+                ? `<p class="text-xs text-gray-600">${escapeHtml(lang.emptyPresets)}</p>`
+                : presets.map((p, i) => renderRow(p, 'preset', i)).join('');
+        }
+
+        // Vibe preset seçildiğinde free-text input'u ve mode radio'larını kilitle
+        const vibePresetEl = document.getElementById('vibePreset');
+        const targetInputEl = document.getElementById('targetInput');
+        function applyVibePresetState() {
+            const isPreset = vibePresetEl.value !== '';
+            targetInputEl.disabled = isPreset;
+            targetInputEl.required = !isPreset;
+            document.querySelectorAll('input[name="searchMode"]').forEach(r => r.disabled = isPreset);
+            // AI expansion preset ile mutually exclusive (preset zaten çözümlenmiş temalar içerir)
+            const aiExpandEl = document.getElementById('useAiExpansion');
+            if (aiExpandEl) {
+                aiExpandEl.disabled = isPreset;
+                if (isPreset) aiExpandEl.checked = false;
+            }
+        }
+        vibePresetEl.addEventListener('change', applyVibePresetState);
+        applyVibePresetState();
+
         document.getElementById('playlistForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
-            const lang = translations[currentLang];
-            
-            // UI Yönetimi
-            const submitBtn = document.getElementById('submitBtn');
-            const loading = document.getElementById('loading');
-            const result = document.getElementById('result');
-            const errorEl = document.getElementById('error');
-            
-            submitBtn.style.display = 'none';
-            loading.classList.remove('hidden');
-            result.classList.add('hidden');
-            errorEl.classList.add('hidden');
-
-            // Form Verilerini Topla
             const searchMode = document.querySelector('input[name="searchMode"]:checked').value;
-            const targetInput = document.getElementById('targetInput').value.trim();
+            const vibePreset = document.getElementById('vibePreset').value;
+            const targetInputRaw = document.getElementById('targetInput').value.trim();
+
+            // Vibe preset seçilirse: targetInput preset display name (commit playlist adı için kullanılır),
+            // server-side themes preset'in keyword listesinden çözülür.
+            let targetInput;
+            if (vibePreset) {
+                targetInput = (translations[currentLang].vibePresets || {})[vibePreset] || vibePreset;
+            } else {
+                if (!targetInputRaw) return;
+                targetInput = targetInputRaw;
+            }
+
             const avoidDuplicates = document.getElementById('avoidDuplicates').checked;
             const avoidAI = document.getElementById('avoidAI').checked;
+            const publicPlaylist = document.getElementById('publicPlaylist').checked;
+            const totalTracks = parseInt(document.getElementById('totalTracks').value, 10);
+            const distributionStyle = document.getElementById('distributionStyle').value;
+            const yearFromVal = document.getElementById('yearFrom').value;
+            const yearToVal = document.getElementById('yearTo').value;
+            const minDurMinVal = document.getElementById('minDurationMin').value;
+            const maxDurMinVal = document.getElementById('maxDurationMin').value;
+            const excludeExplicit = document.getElementById('excludeExplicit').checked;
+            const useAiExpansion = document.getElementById('useAiExpansion').checked;
+            const generateCover = document.getElementById('generateCover').checked;
+            const acousticOnly = document.getElementById('acousticOnly').checked;
+            const instrumentalOnly = document.getElementById('instrumentalOnly').checked;
+            const excludeRemix = document.getElementById('excludeRemix').checked;
+            const excludeLive = document.getElementById('excludeLive').checked;
+            const excludeCover = document.getElementById('excludeCover').checked;
 
             const payload = {
-                searchMode: searchMode,
-                targetInput: targetInput,
-                avoidDuplicates: avoidDuplicates,
-                avoidAI: avoidAI,
+                searchMode, targetInput, avoidDuplicates, avoidAI,
+                totalTracks, distributionStyle, excludeExplicit,
+                acousticOnly, instrumentalOnly, excludeRemix, excludeLive, excludeCover,
                 lang: currentLang
             };
+            if (vibePreset) payload.vibePreset = vibePreset;
+            if (useAiExpansion) payload.useAiExpansion = true;
+            if (generateCover) payload.generateCover = true;
+            if (yearFromVal) payload.yearFrom = parseInt(yearFromVal, 10);
+            if (yearToVal) payload.yearTo = parseInt(yearToVal, 10);
+            if (minDurMinVal) payload.minDurationSec = Math.round(parseFloat(minDurMinVal) * 60);
+            if (maxDurMinVal) payload.maxDurationSec = Math.round(parseFloat(maxDurMinVal) * 60);
 
-            // Backend'e istek at
+            // Commit aşamasında lazım
+            state.meta = { targetInput, lang: currentLang, publicPlaylist, generateCover };
+            state.tracks = [];
+
             try {
-                const response = await fetch('/api/generate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                
-                const data = await response.json();
+                const completeEvent = await streamPreview(payload);
+                state.tracks = completeEvent.tracks;
+                renderReview();
+                setView('review');
 
-                if (!response.ok) {
-                    throw new Error(data.error || lang.errorUnknown);
-                }
-
-                // Başarılı ise sonucu göster
-                loading.classList.add('hidden');
-                result.classList.remove('hidden');
-                document.getElementById('result-text').innerText = lang.resText(data.count, data.name);
-                document.getElementById('playlist-link').href = data.url;
-                submitBtn.style.display = 'flex';
-
+                // Başarılı arama → history'e ekle
+                addToHistory(payload);
+                renderQuickPicks();
             } catch (err) {
-                loading.classList.add('hidden');
-                errorEl.classList.remove('hidden');
-                errorEl.innerText = err.message;
-                submitBtn.style.display = 'flex';
+                showError(err.message);
             }
         });
+
+        // Quick picks: apply / delete (event delegation)
+        document.getElementById('quickPicks').addEventListener('click', (e) => {
+            const trigger = e.target.closest('[data-action]');
+            if (!trigger) return;
+            const action = trigger.dataset.action;
+            const source = trigger.dataset.source;
+            const idx = parseInt(trigger.dataset.idx, 10);
+            if (Number.isNaN(idx)) return;
+
+            if (action === 'apply') {
+                const list = source === 'history' ? loadHistory() : loadPresets();
+                if (list[idx]) applyPayload(list[idx].payload);
+            } else if (action === 'delete') {
+                if (source === 'history') {
+                    const list = loadHistory();
+                    list.splice(idx, 1);
+                    saveHistory(list);
+                } else {
+                    const list = loadPresets();
+                    list.splice(idx, 1);
+                    savePresets(list);
+                }
+                renderQuickPicks();
+            }
+        });
+
+        // Save preset button — formu okur, isim sorar, localStorage'a yazar
+        document.getElementById('btn-save-preset').addEventListener('click', () => {
+            const lang = translations[currentLang];
+            // Form değerleri ile minimum payload oluştur (submit handler'dakiyle simetrik, sadece save için)
+            const vibePreset = document.getElementById('vibePreset').value;
+            const targetInputRaw = document.getElementById('targetInput').value.trim();
+            let targetInput;
+            if (vibePreset) {
+                targetInput = (lang.vibePresets || {})[vibePreset] || vibePreset;
+            } else {
+                if (!targetInputRaw) {
+                    alert(lang.placeholderInput);
+                    return;
+                }
+                targetInput = targetInputRaw;
+            }
+            const payload = {
+                searchMode: document.querySelector('input[name="searchMode"]:checked').value,
+                targetInput,
+                avoidDuplicates: document.getElementById('avoidDuplicates').checked,
+                avoidAI: document.getElementById('avoidAI').checked,
+                publicPlaylist: document.getElementById('publicPlaylist').checked,
+                totalTracks: parseInt(document.getElementById('totalTracks').value, 10),
+                distributionStyle: document.getElementById('distributionStyle').value,
+                excludeExplicit: document.getElementById('excludeExplicit').checked,
+                acousticOnly: document.getElementById('acousticOnly').checked,
+                instrumentalOnly: document.getElementById('instrumentalOnly').checked,
+                excludeRemix: document.getElementById('excludeRemix').checked,
+                excludeLive: document.getElementById('excludeLive').checked,
+                excludeCover: document.getElementById('excludeCover').checked,
+                lang: currentLang
+            };
+            if (vibePreset) payload.vibePreset = vibePreset;
+            if (document.getElementById('useAiExpansion').checked) payload.useAiExpansion = true;
+            if (document.getElementById('generateCover').checked) payload.generateCover = true;
+            const yfv = document.getElementById('yearFrom').value;
+            const ytv = document.getElementById('yearTo').value;
+            const mdv = document.getElementById('minDurationMin').value;
+            const xdv = document.getElementById('maxDurationMin').value;
+            if (yfv) payload.yearFrom = parseInt(yfv, 10);
+            if (ytv) payload.yearTo = parseInt(ytv, 10);
+            if (mdv) payload.minDurationSec = Math.round(parseFloat(mdv) * 60);
+            if (xdv) payload.maxDurationSec = Math.round(parseFloat(xdv) * 60);
+
+            const name = (prompt(lang.promptPresetName, payloadLabel(payload)) || '').trim();
+            if (!name) return;
+            const list = loadPresets();
+            list.unshift({ label: name, payload, ts: Date.now() });
+            savePresets(list);
+            renderQuickPicks();
+        });
+
+        // Track listesi: remove butonları (event delegation)
+        document.getElementById('track-list').addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-action="remove"]');
+            if (!btn) return;
+            const idx = parseInt(btn.dataset.idx, 10);
+            if (Number.isNaN(idx)) return;
+            state.tracks.splice(idx, 1);
+            renderReview();
+        });
+
+        document.getElementById('btn-commit').addEventListener('click', commitPlaylist);
+        document.getElementById('btn-cancel').addEventListener('click', () => {
+            state.tracks = [];
+            setView('form');
+        });
+        document.getElementById('btn-clear').addEventListener('click', () => {
+            state.tracks = [];
+            renderReview();
+        });
+        document.getElementById('btn-retry').addEventListener('click', () => {
+            setView('form');
+        });
+        document.getElementById('btn-new').addEventListener('click', () => {
+            state.tracks = [];
+            setView('form');
+        });
+
+        updateUI();
+        renderQuickPicks();
+        setView('form');
+
+        // Service worker — PWA cache + ana ekrana ekleme. Sessizce başarısız olabilir (eski tarayıcılar).
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').catch(err => console.warn('SW register failed:', err));
+            });
+        }
     </script>
 </body>
 </html>

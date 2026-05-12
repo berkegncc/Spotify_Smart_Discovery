@@ -1,20 +1,34 @@
 {
-  "name": "spotify-bot",
+  "name": "spotify-smart-discovery",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Free, single-user Spotify playlist discovery tool. Multi-theme blending, vibe presets, AI theme expansion (Gemini Flash), keyword style filters, preview-before-commit, optional AI cover art.",
+  "main": "server.js",
   "scripts": {
+    "start": "node server.js",
+    "get-token": "node get-token.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
+  "keywords": [
+    "spotify",
+    "playlist",
+    "discovery",
+    "music",
+    "gemini",
+    "express",
+    "ndjson"
+  ],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "type": "commonjs",
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "axios": "^1.15.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.1",
     "express": "^5.2.1",
-    "spotify-web-api-node": "^5.0.2"
+    "express-rate-limit": "^8.5.1",
+    "helmet": "^8.1.0",
+    "spotify-web-api-node": "^5.0.2",
+    "zod": "^4.4.3"
   }
 }

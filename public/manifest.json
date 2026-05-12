@@ -1,0 +1,19 @@
+{
+  "name": "Spotify Smart Discovery",
+  "short_name": "Discovery",
+  "description": "Akıllı çalma listesi keşif aracı / Smart playlist discovery tool",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#121212",
+  "theme_color": "#1DB954",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
