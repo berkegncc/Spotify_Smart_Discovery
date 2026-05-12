@@ -1,148 +1,170 @@
-# Spotify Smart Discovery Route 🎧
+# Spotify Smart Discovery 🎧
 
-[**English**](#🌏-english-version) | [**Türkçe**](#🇹🇷-türkçe-versiyon) | [**Setup**](#🛠-setup--installation)
+[Türkçe](#-türkçe) · [English](#-english) · [Setup](#-setup) · [Privacy & Cost](#-privacy--cost) · [License](LICENSE)
 
-A **single-user**, **fully free** playlist generation tool that mines thousands of user-curated public playlists to surface genuinely fresh tracks. AI features run on Google Gemini's free tier — no paid third-party APIs required.
-
----
-
-## 🌏 English Version
-
-### 🌟 Features
-
-#### Discovery Engine
-* **Deep Discovery (Playlist Pool):** Search abstract themes like `night drive`, `lo-fi study`, or `phonk gym`. The tool scans up to 20 matching public playlists per theme and pulls tracks from each.
-* **Multi-Theme Blending:** Comma-separate themes (`phonk gym, lofi study, retro synth`) — each is searched independently and the pools are blended.
-* **9 Vibe Presets:** One-click curated themes (Morning Coffee, Night Drive, Workout, Study, Party, Rainy Day, Romantic, Focus, Relax). Each preset auto-expands into 3-4 internal Spotify queries.
-* **AI Theme Expansion (optional, free):** Type natural-language ("rainy sunday morning coffee") and Google Gemini Flash converts it into 5-8 specific Spotify search queries. Uses the **free** Google AI Studio tier (`gemini-2.5-flash`, `thinkingBudget: 0` → ~1s latency, ~80 tokens per call).
-* **Anti-Duplication:** Filters out tracks already saved in your Spotify library.
-* **AI-Generated Track Filter:** Heuristic regex against AI music tool names (Suno, Udio, Boomy, etc.) in track / album / artist fields.
-
-#### Customization
-* **Track Count:** 20-200 (slider).
-* **Mix Style:** 4 presets — Familiar-heavy (50/30/20), Balanced (30/40/30), Discovery-heavy (15/30/55), Deep Discovery (10/20/70).
-* **Year Range Filter:** Min/max release year.
-* **Duration Filter:** Min/max minutes.
-* **Explicit Filter:** Hide explicit content.
-* **Public/Private:** Default is private.
-
-#### UX
-* **Live Progress Streaming:** NDJSON-based real-time status (`5/20 playlists scanned, 250 tracks collected`) — no opaque spinner.
-* **Review Before Commit:** See all selected tracks with album art, artist names, duration, and bucket label. Remove individual tracks with ✕ before adding to Spotify. Cancel and start over anytime.
-* **Smart Artist Rotation:** Final list never has the same primary artist back-to-back (greedy round-robin).
-* **Bilingual UI:** Turkish ↔ English toggle, persisted in localStorage.
-* **One-Click Start:** `start.bat` (Windows) handles npm install, browser launch, and server startup.
-
-### 🛡️ Production Safety
-- `helmet` security headers
-- Origin-whitelisted CORS (configurable via `ALLOWED_ORIGINS`)
-- Per-endpoint rate limiting (preview 10/min, commit 20/min)
-- Strict `zod` body validation on all endpoints
-- App-level Gemini rate limit (10/min, well below free-tier 15 RPM)
-- Model name **hardcoded** (`gemini-2.5-flash`) — drift to paid models physically impossible
-- Graceful fallback: if Gemini fails (missing key, timeout, parse error), original theme is used and the user sees a stream message
-- Pool deduplication, Fisher-Yates shuffle, artist diversity cap (max 3 tracks per artist)
-
-> [!WARNING]
-> The AI-generated-track filter is heuristic and may have false positives/negatives due to inconsistent platform metadata.
+A **free**, **single-user** playlist discovery tool that mines public Spotify playlists to surface genuinely fresh tracks — beyond stale algorithmic recommendations. Bilingual UI (TR/EN), optional AI theme expansion, preview-before-commit, AI cover art, PWA. Everything runs on free tiers; no paid APIs.
 
 ---
 
-## 🇹🇷 Türkçe Versiyon
+## 🇹🇷 Türkçe
 
-### 🌟 Özellikler
+**Spotify Smart Discovery**, kütüphanenizdekine benzemeyen gerçekten taze parçalar bulmak için yüzlerce public Spotify çalma listesini eleyen, tek kullanıcılı, tamamen ücretsiz bir araçtır.
 
-#### Keşif Motoru
-* **Geniş Keşif (Playlist Pool):** `gece sürüşü`, `türkçe rap`, `phonk gym` gibi temalarla arama yapın. Her tema için 20'ye kadar eşleşen public playlist taranır, içlerinden şarkılar derlenir.
-* **Multi-Tema Karıştırma:** Virgülle ayrılmış birden fazla tema yazın (`phonk gym, lofi study, retro synth`) — her tema ayrı aranır, sonuçlar karıştırılır.
-* **9 Hazır Vibe Preset'i:** Tek tıkla seçilen temalar (Sabah Kahvesi, Gece Sürüşü, Antrenman, Çalışma, Parti, Yağmurlu Gün, Romantik, Odaklanma, Rahatlama). Her preset arkada 3-4 alt aramaya açılır.
-* **AI Tema Genişletme (opsiyonel, ücretsiz):** Doğal dil yaz ("yağmurlu pazar sabahı kahve içerken") — Google Gemini Flash bunu 5-8 spesifik Spotify aramasına çevirir. **Ücretsiz** Google AI Studio tier'ı (`gemini-2.5-flash`, `thinkingBudget: 0` → ~1 sn, ~80 token/çağrı).
-* **Anti-Duplication:** Kütüphanenizdeki kayıtlı şarkılar otomatik elenir.
-* **AI Üretimi Filtresi:** AI müzik araçlarının (Suno, Udio, Boomy vb.) isimlerini şarkı / albüm / sanatçı alanlarında regex ile arar.
+### Nasıl çalışır?
+1. Bir tema yaz (örn. `gece sürüşü, türkçe rap`) veya 9 hazır vibe'dan birini seç
+2. Bot, Spotify'daki ilgili public playlist'leri tarar, 100-200 şarkı toplar
+3. Filtreler uygulanır (yıl, süre, explicit, akustik/live/remix/cover)
+4. Spotify'a eklemeden **önce listeyi sen onaylarsın** — beğenmediklerini ✕ ile çıkar
+5. "Onayla" → playlist hesabında oluşur (istersen Pollinations.ai ile AI kapak resmiyle birlikte)
 
-#### Özelleştirme
-* **Şarkı Sayısı:** 20-200 (slider).
-* **Karıştırma Tarzı:** 4 preset — Tanıdık Ağırlıklı (50/30/20), Dengeli (30/40/30), Keşif Ağırlıklı (15/30/55), Derin Keşif (10/20/70).
-* **Yıl Aralığı:** Min/max çıkış yılı.
-* **Süre Filtresi:** Min/max dakika.
-* **Explicit Filtresi:** Açık içeriği gizle.
-* **Public/Private:** Varsayılan: private.
-
-#### Kullanıcı Deneyimi
-* **Canlı Progress Akışı:** NDJSON ile arama ilerlemesi gerçek zamanlı (`5/20 playlist tarandı, 250 şarkı toplandı`) — sadece spinner değil.
-* **Onay Öncesi Önizleme:** Tüm seçili şarkıları albüm kapağı, sanatçı, süre ve bucket etiketiyle gör. Beğenmediklerini ✕ ile çıkar, sonra "Onayla & Spotify'a Ekle". İstediğin zaman iptal et.
-* **Akıllı Sanatçı Rotasyonu:** Final listede aynı sanatçı arka arkaya gelmez (greedy round-robin).
-* **Çok Dilli UI:** Türkçe ↔ İngilizce, localStorage'da kalıcı.
-* **Tek Tıkla Başlatma:** `start.bat` (Windows) — npm install + tarayıcı + sunucu hep birlikte.
-
-### 🛡️ Güvenlik
-- `helmet` güvenlik header'ları
-- Origin whitelist'li CORS (`ALLOWED_ORIGINS` env değişkeni ile yapılandırılır)
-- Endpoint başına rate limit (preview 10/dk, commit 20/dk)
-- Tüm body'lerde `zod` validation
-- App-side Gemini rate limit (10/dk, ücretsiz tier 15 RPM'in altında)
-- Model adı **hardcoded** (`gemini-2.5-flash`) — ücretli modellere drift fiziksel olarak imkansız
-- Graceful fallback: Gemini başarısız olursa orijinal temayla devam edilir, kullanıcı stream'de bilgi alır
-- Havuz dedup, Fisher-Yates shuffle, sanatçı çeşitlilik limiti (sanatçı başına max 3 şarkı)
-
-> [!CAUTION]
-> AI-üretimi şarkı filtresi sezgiseldir, platform metadata tutarsızlığı nedeniyle %100 doğru olmayabilir.
+### Öne çıkan özellikler
+- **9 hazır vibe preset** (Sabah Kahvesi, Gece Sürüşü, Antrenman, Çalışma, Parti, Yağmurlu Gün, Romantik, Odaklanma, Rahatlama)
+- **Multi-tema arama** — virgülle ayır, her tema ayrı aranır, sonuçlar karışır
+- **AI tema genişletme (opsiyonel)** — `"yağmurlu pazar sabahı"` yaz → Gemini Flash 5-8 spesifik aramaya çevirir
+- **Akıllı filtreler** — yıl aralığı, süre, explicit, sadece akustik/instrumental, remix/live/cover'ları gizle
+- **Sanatçı rotasyonu** — aynı sanatçı arka arkaya gelmez
+- **Onay öncesi önizleme** — albüm kapağı, sanatçı, süre, bucket etiketi
+- **localStorage geçmişi + kaydedilmiş preset'ler** — sık kullandığın kombinasyonları yedekle
+- **AI kapak resmi** — Pollinations.ai ile bedava, ~720ms
+- **PWA** — telefon ana ekranına eklenebilir
+- **Anti-duplication** — kütüphanendeki şarkıları otomatik eler
 
 ---
 
-## 🛠 Setup & Installation
+## 🇬🇧 English
 
-### 1. Clone & Install
+**Spotify Smart Discovery** is a single-user tool that mines hundreds of public Spotify playlists to surface genuinely fresh tracks. Completely free — no paid APIs.
+
+### How it works
+1. Type a theme (e.g. `night drive, retro synth`) or pick one of 9 vibe presets
+2. The backend scans matching public Spotify playlists and collects 100-200 tracks
+3. Filters apply (year, duration, explicit, acoustic/live/remix/cover)
+4. You **review the list before commit** — remove any track you don't want with ✕
+5. Approve → playlist is created in your account (with an optional Pollinations.ai cover)
+
+### Highlights
+- **9 vibe presets** (Morning Coffee, Night Drive, Workout, Study, Party, Rainy Day, Romantic, Focus, Relax)
+- **Multi-theme search** — comma-separated themes searched in parallel and blended
+- **AI theme expansion (optional)** — type `"rainy sunday morning"` → Gemini Flash converts it into 5-8 Spotify queries
+- **Smart filters** — year range, duration, explicit, acoustic/instrumental only, hide remix/live/cover
+- **Artist rotation** — same artist never plays back-to-back
+- **Preview-before-commit** — album art, artist, duration, bucket label
+- **localStorage history + saved presets** — keep your favorite combos one click away
+- **AI cover art** — free via Pollinations.ai, ~720ms
+- **PWA** — installable to phone home screen
+- **Anti-duplication** — auto-removes tracks already in your library
+
+---
+
+## 🛠 Setup
+
+### Requirements
+- Node.js 18+
+- A Spotify account (free works fine)
+- *(Optional)* A free Google AI Studio account for the AI theme expansion feature
+
+### 1. Clone & install
 ```bash
-git clone <your-repo-url>
-cd spotify-bot
+git clone https://github.com/berkegncc/Spotify_Smart_Discovery.git
+cd Spotify_Smart_Discovery
 npm install
 ```
 
-### 2. Spotify Credentials
-1. Create a Spotify app at [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard).
-2. Add `http://localhost:3000/callback` as a redirect URI in the app settings.
-3. Copy `.env.example` to `.env` and fill in:
+### 2. Create a Spotify Developer app
+1. Open [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard) → **Create app**
+2. Add `http://localhost:3000/callback` as a **Redirect URI**
+3. Copy the **Client ID** and **Client Secret**
+
+### 3. Configure `.env`
+```bash
+cp .env.example .env
 ```
-SPOTIFY_CLIENT_ID=...
-SPOTIFY_CLIENT_SECRET=...
+Open `.env` and fill in:
+```
+SPOTIFY_CLIENT_ID=<from step 2>
+SPOTIFY_CLIENT_SECRET=<from step 2>
 SPOTIFY_REDIRECT_URI=http://localhost:3000/callback
+SPOTIFY_REFRESH_TOKEN=    # filled in next step
+GEMINI_API_KEY=           # optional, see step 5
 ```
 
-### 3. Get Refresh Token
+### 4. Get your Spotify refresh token
 ```bash
 node get-token.js
-# Visit the printed URL, authorize the app, paste back the "code" parameter:
+```
+This prints a URL. Open it, authorize the app, then copy the `code=...` parameter from the redirect URL. Run:
+```bash
 node get-token.js "<paste-code-here>"
 ```
-Copy the printed refresh token into `.env`'s `SPOTIFY_REFRESH_TOKEN`.
+Paste the printed refresh token into `.env`'s `SPOTIFY_REFRESH_TOKEN`.
 
-### 4. (Optional) Gemini API Key for AI Theme Expansion
-Get a **free** key from [Google AI Studio](https://aistudio.google.com/app/apikey) and add to `.env`:
-```
-GEMINI_API_KEY=...
-```
+### 5. *(Optional)* Gemini API key — for AI theme expansion
+1. Visit [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey)
+2. Click **Create API key** (no credit card required)
+3. Paste into `.env`'s `GEMINI_API_KEY`
 
 > [!IMPORTANT]
-> **Keeping it free is conditional.** `gemini-2.5-flash` exists on both free and paid tiers — the same key serves both. Which tier your requests land on depends on the **billing status of the GCP project that owns the key**:
-> - **GCP billing disabled** → requests above the free quota are rejected with HTTP 429. **No bill possible.** Recommended.
-> - **GCP billing enabled** → overage silently spills into paid tier and accrues charges.
+> **Keep it free.** `gemini-2.5-flash` exists on both free and paid tiers — the same API key serves both. Whether your usage stays free depends on the **billing status of the GCP project that owns your key**:
+> - **GCP billing disabled** (recommended) → over-quota requests are rejected. **No bill possible.**
+> - **GCP billing enabled** → over-quota silently spills into paid tier. Set a `$0 / 0 TRY budget alert` at [Cloud Console → Budgets](https://console.cloud.google.com/billing/budgets) first.
 >
-> Either create a fresh GCP project with billing disabled and get a new AI Studio key under it, OR set a `0 TRY / 0 USD` budget alert at [Cloud Console → Billing → Budgets](https://console.cloud.google.com/billing/budgets).
+> Without a Gemini key the app still works perfectly — only the "AI Theme Expansion" checkbox becomes silently inert.
 
-### 5. Start the App
+### 6. Run
 
-**Windows (recommended):**
+**Windows (one-click):**
 ```
 start.bat
 ```
-Double-click or run from CLI. Auto-installs dependencies if missing, launches the browser at `http://localhost:3000`, and shows server logs in the same window. Ctrl+C to stop.
+Auto-installs dependencies if missing, opens `http://localhost:3000` in your browser, shows server logs in the same window. Ctrl+C to stop.
 
-**Manual (any OS):**
+**Any OS:**
 ```bash
 npm start
 # then open http://localhost:3000
 ```
 
-## License
-MIT
+---
+
+## 🔐 Privacy & Cost
+
+| | |
+|---|---|
+| **Your credentials stay local** | `.env` is gitignored. Never committed, never leaves your machine. |
+| **Bring your own keys** | This repo ships only with `.env.example` placeholders. **Each user needs their own Spotify and (optionally) Gemini keys** — the owner's keys are not bundled. |
+| **No tracking** | No analytics, no telemetry, no third-party scripts. |
+| **No bills** | Spotify Web API (free) + Gemini AI Studio (free tier) + Pollinations.ai (no signup) = $0/month, **provided you follow the Gemini billing note above**. |
+
+---
+
+## 🛡 Security
+
+- `helmet` security headers, origin-whitelisted CORS, per-endpoint rate limiting
+- All request bodies validated with `zod` (strict types, length caps, regex on track URIs)
+- Gemini model name **hardcoded** (`gemini-2.5-flash`) — physically cannot drift to paid models like Veo or Imagen
+- App-level Gemini rate limit (10/min, below the free tier's 15 RPM)
+- Graceful fallback: if Gemini fails (missing key, timeout, parse error), the app falls back to your original theme and notifies you in the progress stream
+
+---
+
+## 🧱 Built with
+
+| Layer | Stack |
+|---|---|
+| Backend | Node.js + Express, helmet, zod, express-rate-limit, NDJSON streaming |
+| Frontend | Vanilla HTML/JS + Tailwind CDN, PWA (manifest + service worker) |
+| APIs | Spotify Web API, Google Gemini 2.5 Flash, Pollinations.ai |
+
+---
+
+## ⚠️ Caveats
+
+- The "filter AI-generated tracks" toggle uses regex on track/album/artist names — heuristic, with possible false positives and negatives
+- Audio Features / Recommendations endpoints are **not used** (Spotify deprecated them for new Development Mode apps in Nov 2024). The app relies only on Search and Playlist APIs, which remain available.
+- Single-user by design — each user runs their own instance with their own Spotify account. No shared backend, no multi-tenant OAuth.
+
+---
+
+## 📜 License
+
+MIT — see [LICENSE](LICENSE).
